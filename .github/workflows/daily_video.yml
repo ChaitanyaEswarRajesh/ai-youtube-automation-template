@@ -3,6 +3,9 @@ name: Daily AI Developer Video Upload
 on:
   schedule:
     - cron: '0 8 * * *'  # Run daily at 8 AM UTC
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -24,16 +27,11 @@ jobs:
           sudo apt install -y ffmpeg jq wget
           pip install -r requirements.txt
 
-      - name: Auto-generate topics if master is low
+      - name: Auto-generate new topics with Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          if [ ! -s topics_master.txt ] || [ "$(wc -l < topics_master.txt)" -lt 3 ]; then
-            echo "🧠 Replenishing topics_master.txt using Gemini..."
-            python auto_generate_topics.py
-          else
-            echo "✅ topics_master.txt has enough topics."
-          fi
+          python auto_generate_topics.py
 
       - name: Pick next topic from master list
         run: |
@@ -54,7 +52,7 @@ jobs:
         run: |
           mkdir -p output
           topic=$(cat topics.txt)
-          query=$(echo "$topic professional woman" | tr ' ' '+')
+          query=$(echo "$topic professional woman avatar" | tr ' ' '+')
           curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
           IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
           if [ "$IMAGE_URL" = "null" ] || [ -z "$IMAGE_URL" ]; then
@@ -104,6 +102,7 @@ jobs:
           printf "1\n00:00:00,000 --> 00:00:10,000\n$topic\n" > output/subtitles_0.srt
 
       - name: Upload videos to YouTube
+        if: github.event_name == 'schedule'
         env:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -111,14 +110,14 @@ jobs:
         run: |
           topic=$(cat topics.txt)
           echo "$topic" > title.txt
-          echo "Learn about $topic from a developer’s perspective using AI." > description.txt
-          echo "#AI #Gemini #Developers #Coding #Shorts" > tags.txt
+          echo "Learn about $topic from a developer’s perspective using AI.\n$(cat tags.txt)" > description.txt
+          echo "#AI #Gemini #Developers #Coding #Shorts" >> tags.txt
 
           echo "Uploading full video..."
-          python upload_to_youtube.py full 0
+          python upload_to_youtube.py full 0 || echo "⚠️ Full video upload failed"
 
           echo "Uploading short video..."
-          python upload_to_youtube.py short 0
+          python upload_to_youtube.py short 0 || echo "⚠️ Shorts upload failed"
 
       - name: Clean topics.txt
         run: |
