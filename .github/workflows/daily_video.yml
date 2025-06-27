@@ -74,6 +74,8 @@ jobs:
       - name: Upload videos to YouTube
         env:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           topic=$(cat topics.txt)
           echo "$topic" > title.txt
@@ -81,19 +83,7 @@ jobs:
           echo "#AI #Gemini #Developers #Coding #Shorts" > tags.txt
 
           echo "Uploading full video..."
-          curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
-            -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
-            -F "snippet.title=$(cat title.txt)" \
-            -F "snippet.description=$(cat description.txt)" \
-            -F "snippet.tags=$(cat tags.txt)" \
-            -F "status.privacyStatus=public" \
-            -F "video=@output/video_full_0.mp4"
+          python upload_to_youtube.py full 0
 
           echo "Uploading short video..."
-          curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
-            -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
-            -F "snippet.title=$(cat title.txt) #shorts" \
-            -F "snippet.description=$(cat description.txt)\n#shorts" \
-            -F "snippet.tags=$(cat tags.txt),shorts" \
-            -F "status.privacyStatus=public" \
-            -F "video=@output/video_short_0.mp4"
+          python upload_to_youtube.py short 0

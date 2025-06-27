@@ -2,3 +2,5 @@ requests
 google-generativeai
 flask
 TTS
+google-api-python-client
+google-auth
