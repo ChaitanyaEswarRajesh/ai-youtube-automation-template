@@ -31,10 +31,23 @@ def get_authenticated_service():
 def upload_video(filename, title, description, tags, thumbnail_path=None):
     youtube = get_authenticated_service()
 
+    # === Validate metadata ===
+    if not title.strip():
+        print("❌ Title is empty. Aborting upload.")
+        exit(1)
+
+    if not description.strip():
+        print("⚠️ Description is empty. Setting default.")
+        description = "AI-generated video for developers."
+
+    if not tags.strip():
+        print("⚠️ Tags are empty. Setting default.")
+        tags = "#AI, #Shorts, #Coding"
+
     body = {
         "snippet": {
-            "title": title,
-            "description": description,
+            "title": title.strip(),
+            "description": description.strip(),
             "tags": [tag.strip() for tag in tags.split(",") if tag.strip()],
             "categoryId": "28",  # Science & Technology
         },
@@ -52,12 +65,16 @@ def upload_video(filename, title, description, tags, thumbnail_path=None):
         media_body=media
     )
 
-    response = request.execute()
-    video_id = response["id"]
-    print(f"✅ Video uploaded: https://youtu.be/{video_id}")
+    try:
+        response = request.execute()
+        video_id = response["id"]
+        print(f"✅ Video uploaded: https://youtu.be/{video_id}")
+    except Exception as e:
+        print("❌ Upload failed:", e)
+        exit(1)
 
-    # Optional: upload thumbnail for full video only
-    if thumbnail_path and os.path.exists(thumbnail_path) and "short" not in filename:
+    # Optional: Upload thumbnail if full video
+    if thumbnail_path and os.path.exists(thumbnail_path) and "short" not in filename.lower():
         try:
             youtube.thumbnails().set(
                 videoId=video_id,
