@@ -48,32 +48,34 @@ jobs:
               --model_name tts_models/en/ljspeech/tacotron2-DDC \
               --out_path output/audio_0.wav
 
-      - name: Download image from Pixabay
+      - name: Generate AI Lady Avatar
         env:
-          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          DID_API_KEY: ${{ secrets.DID_API_KEY }}
         run: |
-          topic=$(cat topics.txt)
-          query=$(echo "$topic" | tr ' ' '+')
-          curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
-          IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
-          wget "$IMAGE_URL" -O output/image_0.jpg
+          python generate_talking_avatar.py || touch output/talking_avatar_failed.flag
+
+      - name: Generate fallback video if D-ID fails
+        if: always()
+        run: |
+          if [ -f output/talking_avatar_failed.flag ]; then
+            echo "⚠️ D-ID failed. Generating fallback video with ffmpeg..."
+            ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
+              -vf "scale=1280:720" \
+              -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
+              -y output/talking_avatar.mp4
+          else
+            echo "✅ Using D-ID avatar video."
+          fi
+
+      - name: Rename avatar video for YouTube
+        run: |
+          cp output/talking_avatar.mp4 output/video_full_0.mp4
+          cp output/talking_avatar.mp4 output/video_short_0.mp4
 
       - name: Generate subtitles
         run: |
           topic=$(cat topics.txt)
           printf "1\n00:00:00,000 --> 00:00:10,000\n$topic\n" > output/subtitles_0.srt
-
-      - name: Create full and short videos
-        run: |
-          ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
-            -vf "scale=1280:720,subtitles=output/subtitles_0.srt" \
-            -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
-            -y output/video_full_0.mp4
-
-          ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
-            -vf "scale=720:1280,subtitles=output/subtitles_0.srt" \
-            -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
-            -y output/video_short_0.mp4
 
       - name: Upload videos to YouTube
         env:
