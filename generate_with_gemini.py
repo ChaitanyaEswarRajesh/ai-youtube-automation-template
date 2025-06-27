@@ -6,7 +6,8 @@ import sys
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 topic = sys.argv[1]
 
-API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
+#API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
+API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
 
 headers = {
     "Content-Type": "application/json"
