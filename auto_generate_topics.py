@@ -1,38 +1,29 @@
 import os
-import requests
-import json
+import google.generativeai as genai
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# Load the API key from environment variable
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = "gemini-1.5-pro-latest"
-API_URL = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={GEMINI_API_KEY}"
+# Use the Gemini 1.5 Flash model
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-headers = {
-    "Content-Type": "application/json"
-}
-
+# Define your prompt
 prompt = (
     "Generate a list of 5 YouTube video topics related to how developers can use AI tools like Gemini, "
     "GitHub Copilot, or LLMs. Make the topics short, professional, and interesting."
 )
 
-body = {
-    "contents": [{
-        "parts": [{
-            "text": prompt
-        }]
-    }]
-}
+# Generate content
+try:
+    response = model.generate_content(prompt)
+    text = response.text
+    topics = [line.strip('-• ').strip() for line in text.split('\n') if line.strip()]
 
-response = requests.post(API_URL, headers=headers, data=json.dumps(body))
-
-if response.status_code == 200:
-    result = response.json()
-    text = result['candidates'][0]['content']['parts'][0]['text']
-    topics = [line.strip('- ').strip() for line in text.strip().split('\n') if line.strip()]
+    # Write topics to file
     with open("topics.txt", "w") as f:
-        f.write('\n'.join(topics))
-    print("✅ Generated topics.txt with Gemini.")
-else:
-    print("❌ Gemini API error:", response.status_code, response.text)
+        f.write("\n".join(topics))
+
+    print("✅ Successfully generated topics.txt using Gemini 1.5 Flash")
+except Exception as e:
+    print("❌ Gemini SDK error:", e)
     exit(1)

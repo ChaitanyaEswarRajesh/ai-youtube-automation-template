@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ffmpeg jq wget
-          pip install TTS requests flask
+          pip install TTS requests flask google-generativeai
 
       - name: Generate Video(s) and Upload to YouTube
         env:

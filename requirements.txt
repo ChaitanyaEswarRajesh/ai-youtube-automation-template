@@ -2,3 +2,4 @@ coqui-ai
 TTS
 requests
 flask
+google-generativeai
