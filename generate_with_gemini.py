@@ -39,7 +39,7 @@ def retry_generate(prompt, max_retries=3):
             time.sleep(2)
     return ""
 
-# 1. Generate script
+# === 1. Generate script ===
 script_prompt = (
     f"Write a short YouTube video script from a developer's perspective on the topic: {topic}. "
     "The script should be concise, under 60 seconds, informative, practical, and avoid marketing fluff. "
@@ -54,14 +54,22 @@ if not script:
 with open("script.txt", "w", encoding="utf-8") as f:
     f.write(script)
 
-# 2. Generate metadata
-title_prompt = f"Generate an engaging YouTube video title (under 60 characters) for: {topic}"
-title = retry_generate(title_prompt).strip()
+# === 2. Generate metadata ===
+title_prompt = (
+    f"Generate ONE engaging YouTube video title under 60 characters for the topic: {topic}. "
+    "Return only the title text, no bullet points, no quotes."
+)
+title = retry_generate(title_prompt).split("\n")[0].strip()
+if len(title) > 60:
+    title = title[:60].strip()
 
 description_prompt = f"Write a short YouTube description (1-2 lines) for a video about: {topic}, targeting developers."
 description = retry_generate(description_prompt).strip()
 
-tags_prompt = f"Generate 5 to 7 relevant YouTube hashtags for: {topic}. Return them comma-separated, no numbering, just tags like: #AI, #Coding, #DevTips"
+tags_prompt = (
+    f"Generate 5 to 7 relevant YouTube hashtags for: {topic}. "
+    "Return them comma-separated, no numbering, just tags like: #AI, #Coding, #DevTips"
+)
 tags_raw = retry_generate(tags_prompt)
 
 # Normalize tags
@@ -71,13 +79,13 @@ if "#shorts" not in [tag.lower() for tag in hashtags]:
 if not hashtags:
     hashtags = ["#AI", "#Coding", "#Gemini", "#Shorts", "#Developers"]
 
-# Fallback handling
+# Fallbacks
 final_title = title if title else topic
 final_description = description if description else f"A quick look at {topic} from a developer’s view."
 if "#shorts" not in final_description.lower():
     final_description += " #shorts"
 
-# Write to files
+# === Save to files ===
 with open("title.txt", "w", encoding="utf-8") as f:
     f.write(final_title)
 
@@ -87,7 +95,7 @@ with open("description.txt", "w", encoding="utf-8") as f:
 with open("tags.txt", "w", encoding="utf-8") as f:
     f.write(", ".join(hashtags))
 
-# Log for debugging
+# === Log ===
 print("✅ Metadata generated:")
 print("• Title:", final_title)
 print("• Description:", final_description)
