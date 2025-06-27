@@ -37,6 +37,16 @@ jobs:
           echo "🔹 Generating script for topic: $topic"
           python generate_with_gemini.py "$topic"
 
+      - name: Download image from Pixabay
+        env:
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          topic=$(cat topics.txt)
+          query=$(echo "$topic" | tr ' ' '+')
+          curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
+          IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
+          wget "$IMAGE_URL" -O output/image_0.jpg
+
       - name: Clean script for TTS
         run: |
           grep -vE '^\s*Text:|^\s*\(.*\)$' script.txt | grep -vE '^\s*\[.*\]$' > script_clean.txt
@@ -93,3 +103,7 @@ jobs:
 
           echo "Uploading short video..."
           python upload_to_youtube.py short 0
+
+      - name: Clean topics.txt
+        run: |
+          > topics.txt
