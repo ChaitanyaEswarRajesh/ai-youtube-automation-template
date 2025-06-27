@@ -4,8 +4,8 @@ import json
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
-API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
+model = "gemini-1.5-pro-latest"
+API_URL = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={GEMINI_API_KEY}"
 
 headers = {
     "Content-Type": "application/json"
