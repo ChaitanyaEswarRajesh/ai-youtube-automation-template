@@ -24,7 +24,7 @@ jobs:
           sudo apt install -y ffmpeg jq wget
           pip install TTS requests flask
 
-            - name: Generate Video(s) and Upload to YouTube
+      - name: Generate Video(s) and Upload to YouTube
         env:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -81,11 +81,10 @@ jobs:
             curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
               -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
               -F "snippet.title=$(cat title.txt) #shorts" \
-              -F "snippet.description=$(cat description.txt)\\n#shorts" \
+              -F "snippet.description=$(cat description.txt)\n#shorts" \
               -F "snippet.tags=$(cat tags.txt),shorts" \
               -F "status.privacyStatus=public" \
               -F "video=@output/video_short_$i.mp4"
 
             i=$((i+1))
           done < topics.txt
-
