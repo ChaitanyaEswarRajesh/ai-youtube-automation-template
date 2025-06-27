@@ -89,7 +89,7 @@ jobs:
               -y output/talking_avatar.mp4
           else
             echo "✅ Using D-ID avatar video."
-
+          fi
       - name: Rename avatar video for YouTube
         run: |
           cp output/talking_avatar.mp4 output/video_full_0.mp4
