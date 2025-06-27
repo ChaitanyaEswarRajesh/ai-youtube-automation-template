@@ -1,34 +1,39 @@
 import os
-import requests
-import json
 import sys
+import google.generativeai as genai
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# Load API key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("❌ Missing GEMINI_API_KEY in environment.")
+    exit(1)
+
+# Get topic from CLI argument
+if len(sys.argv) < 2:
+    print("❌ Missing topic. Usage: python generate_with_gemini.py 'Your Topic'")
+    exit(1)
+
 topic = sys.argv[1]
 
-#API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
-API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
+# Configure the Gemini SDK
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
-headers = {
-    "Content-Type": "application/json"
-}
+# Create a prompt for the script
+prompt = (
+    f"Write a short YouTube video script from a developer's perspective on the topic: {topic}. "
+    "The script should be concise, informative, and engaging for fellow developers. Avoid marketing language."
+)
 
-body = {
-    "contents": [{
-        "parts": [{
-            "text": f"Write a short YouTube video script from a developer's perspective on the topic: {topic}. Make it concise, informative, and professional."
-        }]
-    }]
-}
+# Generate the script
+try:
+    response = model.generate_content(prompt)
+    script = response.text
 
-response = requests.post(API_URL, headers=headers, data=json.dumps(body))
-
-if response.status_code == 200:
-    result = response.json()
-    script = result['candidates'][0]['content']['parts'][0]['text']
     with open("script.txt", "w") as f:
         f.write(script)
-    print("✅ Gemini script generated.")
-else:
-    print("❌ Gemini API error:", response.status_code, response.text)
+
+    print("✅ Generated script.txt for topic:", topic)
+except Exception as e:
+    print("❌ Gemini API error:", e)
     exit(1)
