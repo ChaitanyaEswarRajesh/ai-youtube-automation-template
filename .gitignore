@@ -40,3 +40,6 @@ get_youtube_refresh_token.py
 venv/
 .yvai/
 *.egg-info/
+
+#folder older
+.github/workflows/daily_video copy.yaml

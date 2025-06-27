@@ -1,0 +1,93 @@
+name: Daily AI Developer Video Upload
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Run daily at 8 AM UTC
+  workflow_dispatch:
+
+jobs:
+  ai-video-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg jq wget
+          pip install -r requirements.txt
+
+      - name: Pick next topic from master list
+        run: |
+          head -n 1 topics_master.txt > topics.txt
+          tail -n +2 topics_master.txt > temp.txt && mv temp.txt topics_master.txt
+
+      - name: Generate script with Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          topic=$(cat topics.txt)
+          echo "🔹 Generating script for topic: $topic"
+          python generate_with_gemini.py "$topic"
+
+      - name: Clean script for TTS
+        run: |
+          grep -vE '^\s*Text:|^\s*\(.*\)$' script.txt | grep -vE '^\s*\[.*\]$' > script_clean.txt
+
+      - name: Generate TTS audio
+        run: |
+          mkdir -p output
+          tts --text "$(cat script_clean.txt)" \
+              --model_name tts_models/en/ljspeech/tacotron2-DDC \
+              --out_path output/audio_0.wav
+
+      - name: Download image from Pixabay
+        env:
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          topic=$(cat topics.txt)
+          query=$(echo "$topic" | tr ' ' '+')
+          curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
+          IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
+          wget "$IMAGE_URL" -O output/image_0.jpg
+
+      - name: Generate subtitles
+        run: |
+          topic=$(cat topics.txt)
+          printf "1\n00:00:00,000 --> 00:00:10,000\n$topic\n" > output/subtitles_0.srt
+
+      - name: Create full and short videos
+        run: |
+          ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
+            -vf "scale=1280:720,subtitles=output/subtitles_0.srt" \
+            -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
+            -y output/video_full_0.mp4
+
+          ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
+            -vf "scale=720:1280,subtitles=output/subtitles_0.srt" \
+            -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
+            -y output/video_short_0.mp4
+
+      - name: Upload videos to YouTube
+        env:
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+        run: |
+          topic=$(cat topics.txt)
+          echo "$topic" > title.txt
+          echo "Learn about $topic from a developer’s perspective using AI." > description.txt
+          echo "#AI #Gemini #Developers #Coding #Shorts" > tags.txt
+
+          echo "Uploading full video..."
+          python upload_to_youtube.py full 0
+
+          echo "Uploading short video..."
+          python upload_to_youtube.py short 0
