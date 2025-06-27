@@ -43,3 +43,5 @@ venv/
 
 #folder older
 .github/workflows/daily_video copy.yaml
+.github/workflows/daily_video copy.yml
+.github/workflows/*copy*.yml
