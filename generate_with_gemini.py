@@ -56,32 +56,40 @@ with open("script.txt", "w", encoding="utf-8") as f:
 
 # 2. Generate metadata
 title_prompt = f"Generate an engaging YouTube video title (under 60 characters) for: {topic}"
-title = retry_generate(title_prompt)
+title = retry_generate(title_prompt).strip()
 
 description_prompt = f"Write a short YouTube description (1-2 lines) for a video about: {topic}, targeting developers."
-description = retry_generate(description_prompt)
+description = retry_generate(description_prompt).strip()
 
 tags_prompt = f"Generate 5 to 7 relevant YouTube hashtags for: {topic}. Return them comma-separated, no numbering, just tags like: #AI, #Coding, #DevTips"
 tags_raw = retry_generate(tags_prompt)
 
-# Normalize tags and ensure #shorts is included
-if tags_raw:
-    hashtags = [tag.strip() for tag in tags_raw.split(",") if tag.strip()]
-else:
+# Normalize tags
+hashtags = [tag.strip() for tag in tags_raw.split(",") if tag.strip()] if tags_raw else []
+if "#shorts" not in [tag.lower() for tag in hashtags]:
+    hashtags.append("#shorts")
+if not hashtags:
     hashtags = ["#AI", "#Coding", "#Gemini", "#Shorts", "#Developers"]
 
-if not any("#shorts" in tag.lower() for tag in hashtags):
-    hashtags.append("#shorts")
+# Fallback handling
+final_title = title if title else topic
+final_description = description if description else f"A quick look at {topic} from a developer’s view."
+if "#shorts" not in final_description.lower():
+    final_description += " #shorts"
 
-# Save metadata with fallbacks
+# Write to files
 with open("title.txt", "w", encoding="utf-8") as f:
-    f.write(title if title else topic)
+    f.write(final_title)
 
 with open("description.txt", "w", encoding="utf-8") as f:
-    safe_desc = description if description else f"A quick look at {topic} from a developer’s view."
-    f.write(f"{safe_desc} #shorts")  # ensure hashtag appears in description
+    f.write(final_description)
 
 with open("tags.txt", "w", encoding="utf-8") as f:
     f.write(", ".join(hashtags))
 
-print(f"✅ script.txt, title.txt, description.txt, tags.txt generated for topic: {topic}")
+# Log for debugging
+print("✅ Metadata generated:")
+print("• Title:", final_title)
+print("• Description:", final_description)
+print("• Tags:", ", ".join(hashtags))
+print(f"✅ script.txt, title.txt, description.txt, tags.txt saved for topic: {topic}")

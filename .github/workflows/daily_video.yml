@@ -112,12 +112,16 @@ jobs:
           description=$(cat description.txt)
           tags=$(cat tags.txt)
 
-          echo "Uploading full video..."
+          if [ -z "$title" ]; then
+            echo "⚠️ title.txt was empty. Falling back to topic."
+            title=$(cat topics.txt)
+          fi
+
+          echo "📤 Uploading full video with title: $title"
           python upload_to_youtube.py full 0 "$title" "$description" "$tags" || echo "⚠️ Full video upload failed"
 
-          echo "Uploading short video..."
+          echo "📤 Uploading short video with title: $title"
           python upload_to_youtube.py short 0 "$title" "$description" "$tags" || echo "⚠️ Shorts upload failed"
-
       - name: Clean topics.txt
         run: |
           > topics.txt
