@@ -1,69 +1,93 @@
 import os
 import sys
-from google_auth_oauthlib.flow import InstalledAppFlow
+import json
+import google.auth.transport.requests
+from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-import google.auth.transport.requests
-import google.oauth2.credentials
-import requests
 
-def upload_video(filename, title, description, tags, privacy="public", thumbnail_path=None):
-    credentials = google.oauth2.credentials.Credentials(
-        token=None,
-        refresh_token=os.getenv("YT_REFRESH_TOKEN"),
-        client_id=os.getenv("YT_CLIENT_ID"),
-        client_secret=os.getenv("YT_CLIENT_SECRET"),
-        token_uri="https://oauth2.googleapis.com/token"
+# YouTube API scopes
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+# Required secrets from environment
+CLIENT_ID = os.getenv("YT_CLIENT_ID")
+CLIENT_SECRET = os.getenv("YT_CLIENT_SECRET")
+REFRESH_TOKEN = os.getenv("YT_REFRESH_TOKEN")
+
+if not all([CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]):
+    print("❌ Missing one or more YouTube credentials.")
+    exit(1)
+
+def get_authenticated_service():
+    creds = Credentials(
+        None,
+        refresh_token=REFRESH_TOKEN,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPES,
     )
-    credentials.refresh(google.auth.transport.requests.Request())
-    youtube = build("youtube", "v3", credentials=credentials)
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    return build("youtube", "v3", credentials=creds)
 
-    request_body = {
+def upload_video(filename, title, description, tags, thumbnail_path=None):
+    youtube = get_authenticated_service()
+
+    body = {
         "snippet": {
             "title": title,
             "description": description,
-            "tags": tags.split(","),
-            "categoryId": "28"
+            "tags": [tag.strip() for tag in tags.split(",")],
+            "categoryId": "28",  # Science & Technology
         },
         "status": {
-            "privacyStatus": privacy
+            "privacyStatus": "public"
         }
     }
 
-    media = MediaFileUpload(filename, chunksize=-1, resumable=True)
-    upload_request = youtube.videos().insert(
+    media = MediaFileUpload(filename, mimetype="video/mp4", resumable=True)
+
+    request = youtube.videos().insert(
         part="snippet,status",
-        body=request_body,
+        body=body,
         media_body=media
     )
+    response = request.execute()
+    video_id = response["id"]
+    print(f"✅ Video uploaded: https://youtu.be/{video_id}")
 
-    response = None
-    while response is None:
-        status, response = upload_request.next_chunk()
-        if response and "id" in response:
-            print(f"✅ Video uploaded: https://youtu.be/{response['id']}")
-            if thumbnail_path:
-                youtube.thumbnails().set(
-                    videoId=response["id"],
-                    media_body=MediaFileUpload(thumbnail_path)
-                ).execute()
-                print("🖼️ Thumbnail uploaded.")
-        elif status:
-            print(f"Uploading... {int(status.progress() * 100)}%")
+    # Optional thumbnail (ignored for Shorts)
+    if thumbnail_path and os.path.exists(thumbnail_path):
+        try:
+            youtube.thumbnails().set(
+                videoId=video_id,
+                media_body=MediaFileUpload(thumbnail_path)
+            ).execute()
+            print("🖼️ Thumbnail uploaded.")
+        except Exception as e:
+            print("⚠️ Could not upload thumbnail:", e)
 
+# === ENTRY POINT ===
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python upload_to_youtube.py [full|short] [index]")
+        print("❌ Usage: python upload_to_youtube.py [full|short] [index]")
         exit(1)
 
-    mode = sys.argv[1]
+    mode = sys.argv[1]  # "full" or "short"
     index = sys.argv[2]
 
+    video_file = f"output/video_{mode}_{index}.mp4"
     title = open("title.txt").read().strip()
     description = open("description.txt").read().strip()
     tags = open("tags.txt").read().strip()
 
-    filename = f"output/video_{mode}_{index}.mp4"
-    thumbnail = f"output/image_{index}.jpg"
+    if mode == "short":
+        if "#shorts" not in title.lower():
+            title += " #shorts"
+        if "#shorts" not in description.lower():
+            description += "\n#shorts"
+        if "shorts" not in tags.lower():
+            tags += ",#shorts"
 
-    upload_video(filename, title, description, tags, thumbnail_path=thumbnail)
+    upload_video(video_file, title, description, tags)
