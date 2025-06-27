@@ -2,3 +2,5 @@
 __pycache__/
 output/
 .env
+get_youtube_refresh_token.py
+preview_app.py
