@@ -89,7 +89,6 @@ jobs:
               -y output/talking_avatar.mp4
           else
             echo "✅ Using D-ID avatar video."
-          fi
 
       - name: Rename avatar video for YouTube
         run: |
@@ -116,23 +115,7 @@ jobs:
             echo "⚠️ title.txt was empty. Falling back to topic."
             title=$(cat topics.txt)
           fi
-      - name: Upload videos to YouTube
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        env:
-          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
-          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
-        run: |
-          title=$(cat title.txt)
-          description=$(cat description.txt)
-          tags=$(cat tags.txt)
 
-          if [ -z "$title" ]; then
-            echo "⚠️ title.txt was empty. Falling back to topic."
-            title=$(cat topics.txt)
-          fi
-
-          # Clean full video metadata to remove #shorts
           title_full=$(echo "$title" | sed 's/#shorts//Ig')
           description_full=$(echo "$description" | sed 's/#shorts//Ig')
           tags_full=$(echo "$tags" | sed 's/#shorts//Ig')
@@ -142,7 +125,7 @@ jobs:
 
           echo "📤 Uploading short video with title: $title"
           python upload_to_youtube.py short 0 "$title" "$description" "$tags" || echo "⚠️ Shorts upload failed"
-          
+
       - name: Clean topics.txt
         run: |
           > topics.txt
