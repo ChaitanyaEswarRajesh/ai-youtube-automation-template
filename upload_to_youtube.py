@@ -1,55 +1,69 @@
 import os
 import sys
-from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import google.auth.transport.requests
+import google.oauth2.credentials
+import requests
 
-def upload_video(file_path, title, description, tags, is_short=False):
-    creds = Credentials(
-        None,
-        refresh_token=os.environ["YT_REFRESH_TOKEN"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.environ["YT_CLIENT_ID"],
-        client_secret=os.environ["YT_CLIENT_SECRET"]
+def upload_video(filename, title, description, tags, privacy="public", thumbnail_path=None):
+    credentials = google.oauth2.credentials.Credentials(
+        token=None,
+        refresh_token=os.getenv("YT_REFRESH_TOKEN"),
+        client_id=os.getenv("YT_CLIENT_ID"),
+        client_secret=os.getenv("YT_CLIENT_SECRET"),
+        token_uri="https://oauth2.googleapis.com/token"
     )
+    credentials.refresh(google.auth.transport.requests.Request())
+    youtube = build("youtube", "v3", credentials=credentials)
 
-    youtube = build("youtube", "v3", credentials=creds)
-
-    body = {
+    request_body = {
         "snippet": {
             "title": title,
             "description": description,
             "tags": tags.split(","),
-            "categoryId": "28"  # Tech
+            "categoryId": "28"
         },
         "status": {
-            "privacyStatus": "public"
+            "privacyStatus": privacy
         }
     }
 
-    media = MediaFileUpload(file_path, chunksize=-1, resumable=True)
-
-    request = youtube.videos().insert(
+    media = MediaFileUpload(filename, chunksize=-1, resumable=True)
+    upload_request = youtube.videos().insert(
         part="snippet,status",
-        body=body,
+        body=request_body,
         media_body=media
     )
-    response = request.execute()
-    print("✅ Uploaded:", response["id"])
+
+    response = None
+    while response is None:
+        status, response = upload_request.next_chunk()
+        if response and "id" in response:
+            print(f"✅ Video uploaded: https://youtu.be/{response['id']}")
+            if thumbnail_path:
+                youtube.thumbnails().set(
+                    videoId=response["id"],
+                    media_body=MediaFileUpload(thumbnail_path)
+                ).execute()
+                print("🖼️ Thumbnail uploaded.")
+        elif status:
+            print(f"Uploading... {int(status.progress() * 100)}%")
 
 if __name__ == "__main__":
-    mode = sys.argv[1]  # full or short
-    i = sys.argv[2]     # index
+    if len(sys.argv) < 3:
+        print("Usage: python upload_to_youtube.py [full|short] [index]")
+        exit(1)
+
+    mode = sys.argv[1]
+    index = sys.argv[2]
+
     title = open("title.txt").read().strip()
     description = open("description.txt").read().strip()
     tags = open("tags.txt").read().strip()
 
-    if mode == "short":
-        title += " #shorts"
-        description += "\n#shorts"
-        tags += ",shorts"
-        file_path = f"output/video_short_{i}.mp4"
-    else:
-        file_path = f"output/video_full_{i}.mp4"
+    filename = f"output/video_{mode}_{index}.mp4"
+    thumbnail = f"output/image_{index}.jpg"
 
-    upload_video(file_path, title, description, tags, is_short=(mode == "short"))
+    upload_video(filename, title, description, tags, thumbnail_path=thumbnail)

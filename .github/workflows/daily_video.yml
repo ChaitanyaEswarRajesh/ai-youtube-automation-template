@@ -37,10 +37,14 @@ jobs:
           echo "🔹 Generating script for topic: $topic"
           python generate_with_gemini.py "$topic"
 
+      - name: Clean script for TTS
+        run: |
+          grep -vE '^\s*Text:|^\s*\(.*\)$' script.txt | grep -vE '^\s*\[.*\]$' > script_clean.txt
+
       - name: Generate TTS audio
         run: |
           mkdir -p output
-          tts --text "$(cat script.txt)" \
+          tts --text "$(cat script_clean.txt)" \
               --model_name tts_models/en/ljspeech/tacotron2-DDC \
               --out_path output/audio_0.wav
 
