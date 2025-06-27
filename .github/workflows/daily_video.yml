@@ -102,22 +102,22 @@ jobs:
           printf "1\n00:00:00,000 --> 00:00:10,000\n$topic\n" > output/subtitles_0.srt
 
       - name: Upload videos to YouTube
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         env:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           topic=$(cat topics.txt)
-          title=$(cat title.txt)
-          desc=$(cat description.txt)
-          tags=$(cat tags.txt)
+          echo "$topic" > title.txt
+          echo "Learn about $topic from a developer’s perspective using AI.\n$(cat tags.txt)" > description.txt
+          echo "#AI #Gemini #Developers #Coding #Shorts" >> tags.txt
 
           echo "Uploading full video..."
-          python upload_to_youtube.py full 0 "$title" "$desc" "$tags" || echo "⚠️ Full video upload failed"
+          python upload_to_youtube.py full 0 || echo "⚠️ Full video upload failed"
 
           echo "Uploading short video..."
-          python upload_to_youtube.py short 0 "$title #shorts" "$desc\n#shorts" "$tags, #shorts" || echo "⚠️ Shorts upload failed"
+          python upload_to_youtube.py short 0 || echo "⚠️ Shorts upload failed"
 
       - name: Clean topics.txt
         run: |

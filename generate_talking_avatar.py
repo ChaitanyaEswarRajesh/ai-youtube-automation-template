@@ -7,7 +7,7 @@ DID_API_KEY = os.getenv("DID_API_KEY")
 if not DID_API_KEY:
     print("❌ Missing D-ID API key.")
     exit(1)
-
+os.makedirs("output", exist_ok=True)
 image_path = "lady_avatar.jpg"
 audio_path = "output/audio_0.wav"
 
