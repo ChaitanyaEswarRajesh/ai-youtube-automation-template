@@ -1,0 +1,78 @@
+name: Daily AI Developer Video Upload
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Runs every day at 8 AM UTC
+  workflow_dispatch:
+
+jobs:
+  ai-video-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg jq wget
+          pip install coqui-ai TTS requests
+
+      - name: Generate Topics Using Gemini
+        run: python auto_generate_topics.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Process Topics and Upload Videos
+        env:
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          mkdir -p output
+          i=0
+          while IFS= read -r topic || [ -n "$topic" ]; do
+            echo "🔹 Processing topic: $topic"
+
+            python generate_with_gemini.py "$topic"
+
+            tts --text "$(cat script.txt)" \
+                --model_name tts_models/en/ljspeech/tacotron2-DDC \
+                --out_path output/audio_$i.wav
+
+            query=$(echo "$topic" | tr ' ' '+')
+            curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
+            IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
+            wget "$IMAGE_URL" -O output/image_$i.jpg
+
+            echo "1\n00:00:00,000 --> 00:00:10,000\n$topic" > output/subtitles_$i.srt
+
+            ffmpeg -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
+              -vf "subtitles=output/subtitles_$i.srt" \
+              -c:v libx264 -tune stillimage -pix_fmt yuv420p \
+              -shortest -y output/video_$i.mp4
+
+            echo "$topic" > title.txt
+            echo "Learn about $topic from a developer's perspective using AI." > description.txt
+            echo "AI,Gemini,developer,YouTube automation,coding" > tags.txt
+
+            # Upload to YouTube (this curl block is simplified - normally we’d use the proper YouTube Data API library or tool)
+            echo "⏫ Uploading to YouTube..."
+            curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
+              -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
+              -F "snippet.title=$(cat title.txt)" \
+              -F "snippet.description=$(cat description.txt)" \
+              -F "snippet.tags=$(cat tags.txt)" \
+              -F "status.privacyStatus=public" \
+              -F "video=@output/video_$i.mp4"
+
+            i=$((i+1))
+          done < topics.txt

@@ -1,0 +1,10 @@
+# Ignore Python virtual environment
+yvai/
+*.pyc
+__pycache__/
+.env
+
+# Ignore editor/OS files
+*.DS_Store
+*.swp
+*.swo
