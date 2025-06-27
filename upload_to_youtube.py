@@ -6,10 +6,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# YouTube API scopes
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
-# Required secrets from environment
 CLIENT_ID = os.getenv("YT_CLIENT_ID")
 CLIENT_SECRET = os.getenv("YT_CLIENT_SECRET")
 REFRESH_TOKEN = os.getenv("YT_REFRESH_TOKEN")
@@ -27,8 +25,7 @@ def get_authenticated_service():
         client_secret=CLIENT_SECRET,
         scopes=SCOPES,
     )
-    auth_req = google.auth.transport.requests.Request()
-    creds.refresh(auth_req)
+    creds.refresh(google.auth.transport.requests.Request())
     return build("youtube", "v3", credentials=creds)
 
 def upload_video(filename, title, description, tags, thumbnail_path=None):
@@ -38,7 +35,7 @@ def upload_video(filename, title, description, tags, thumbnail_path=None):
         "snippet": {
             "title": title,
             "description": description,
-            "tags": [tag.strip() for tag in tags.split(",")],
+            "tags": [tag.strip() for tag in tags.split(",") if tag.strip()],
             "categoryId": "28",  # Science & Technology
         },
         "status": {
@@ -48,17 +45,19 @@ def upload_video(filename, title, description, tags, thumbnail_path=None):
 
     media = MediaFileUpload(filename, mimetype="video/mp4", resumable=True)
 
+    print(f"📤 Uploading video: {filename}")
     request = youtube.videos().insert(
         part="snippet,status",
         body=body,
         media_body=media
     )
+
     response = request.execute()
     video_id = response["id"]
     print(f"✅ Video uploaded: https://youtu.be/{video_id}")
 
-    # Optional thumbnail (ignored for Shorts)
-    if thumbnail_path and os.path.exists(thumbnail_path):
+    # Optional: upload thumbnail for full video only
+    if thumbnail_path and os.path.exists(thumbnail_path) and "short" not in filename:
         try:
             youtube.thumbnails().set(
                 videoId=video_id,
@@ -68,26 +67,17 @@ def upload_video(filename, title, description, tags, thumbnail_path=None):
         except Exception as e:
             print("⚠️ Could not upload thumbnail:", e)
 
-# === ENTRY POINT ===
+# === Entry Point ===
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("❌ Usage: python upload_to_youtube.py [full|short] [index]")
+    if len(sys.argv) < 5:
+        print("❌ Usage: python upload_to_youtube.py [full|short] [index] [title] [description] [tags]")
         exit(1)
 
-    mode = sys.argv[1]  # "full" or "short"
+    mode = sys.argv[1]
     index = sys.argv[2]
+    title = sys.argv[3]
+    description = sys.argv[4]
+    tags = sys.argv[5] if len(sys.argv) >= 6 else ""
 
     video_file = f"output/video_{mode}_{index}.mp4"
-    title = open("title.txt").read().strip()
-    description = open("description.txt").read().strip()
-    tags = open("tags.txt").read().strip()
-
-    if mode == "short":
-        if "#shorts" not in title.lower():
-            title += " #shorts"
-        if "#shorts" not in description.lower():
-            description += "\n#shorts"
-        if "shorts" not in tags.lower():
-            tags += ",#shorts"
-
     upload_video(video_file, title, description, tags)

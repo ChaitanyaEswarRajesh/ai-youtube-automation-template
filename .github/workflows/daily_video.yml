@@ -63,7 +63,7 @@ jobs:
 
       - name: Clean script for TTS
         run: |
-          grep -vE '^\s*Text:|^\s*\(.*\)$' script.txt | grep -vE '^\s*\[.*\]$' > script_clean.txt
+          head -c 750 script.txt | grep -vE '^\s*Text:|^\s*\(.*\)$' | grep -vE '^\s*\[.*\]$' > script_clean.txt
 
       - name: Generate TTS audio
         run: |
@@ -109,15 +109,15 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           topic=$(cat topics.txt)
-          echo "$topic" > title.txt
-          echo "Learn about $topic from a developer’s perspective using AI.\n$(cat tags.txt)" > description.txt
-          echo "#AI #Gemini #Developers #Coding #Shorts" >> tags.txt
+          title=$(cat title.txt)
+          desc=$(cat description.txt)
+          tags=$(cat tags.txt)
 
           echo "Uploading full video..."
-          python upload_to_youtube.py full 0 || echo "⚠️ Full video upload failed"
+          python upload_to_youtube.py full 0 "$title" "$desc" "$tags" || echo "⚠️ Full video upload failed"
 
           echo "Uploading short video..."
-          python upload_to_youtube.py short 0 || echo "⚠️ Shorts upload failed"
+          python upload_to_youtube.py short 0 "$title #shorts" "$desc\n#shorts" "$tags, #shorts" || echo "⚠️ Shorts upload failed"
 
       - name: Clean topics.txt
         run: |
