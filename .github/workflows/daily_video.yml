@@ -51,13 +51,13 @@ jobs:
             #echo "1\n00:00:00,000 --> 00:00:10,000\n$topic" > output/subtitles_$i.srt
             printf "1\n00:00:00,000 --> 00:00:10,000\n$topic\n" > output/subtitles_$i.srt
             # FULL video (horizontal)
-            ffmpeg -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
+            ffmpeg -nostdin -loglevel error -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
               -vf "scale=1280:720,subtitles=output/subtitles_$i.srt" \
               -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
               -y output/video_full_$i.mp4
 
             # SHORT video (vertical)
-            ffmpeg -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
+            ffmpeg -nostdin -loglevel error -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
               -vf "scale=720:1280,subtitles=output/subtitles_$i.srt" \
               -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
               -y output/video_short_$i.mp4
