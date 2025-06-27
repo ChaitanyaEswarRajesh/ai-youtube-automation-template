@@ -54,7 +54,7 @@ if not script:
 with open("script.txt", "w", encoding="utf-8") as f:
     f.write(script)
 
-# 2. Generate metadata: title, description, tags
+# 2. Generate metadata
 title_prompt = f"Generate an engaging YouTube video title (under 60 characters) for: {topic}"
 title = retry_generate(title_prompt)
 
@@ -62,16 +62,26 @@ description_prompt = f"Write a short YouTube description (1-2 lines) for a video
 description = retry_generate(description_prompt)
 
 tags_prompt = f"Generate 5 to 7 relevant YouTube hashtags for: {topic}. Return them comma-separated, no numbering, just tags like: #AI, #Coding, #DevTips"
-tags = retry_generate(tags_prompt)
+tags_raw = retry_generate(tags_prompt)
 
-# Write metadata to files (with safe defaults)
+# Normalize tags and ensure #shorts is included
+if tags_raw:
+    hashtags = [tag.strip() for tag in tags_raw.split(",") if tag.strip()]
+else:
+    hashtags = ["#AI", "#Coding", "#Gemini", "#Shorts", "#Developers"]
+
+if not any("#shorts" in tag.lower() for tag in hashtags):
+    hashtags.append("#shorts")
+
+# Save metadata with fallbacks
 with open("title.txt", "w", encoding="utf-8") as f:
     f.write(title if title else topic)
 
 with open("description.txt", "w", encoding="utf-8") as f:
-    f.write(description if description else f"A quick look at {topic} from a developer’s view.")
+    safe_desc = description if description else f"A quick look at {topic} from a developer’s view."
+    f.write(f"{safe_desc} #shorts")  # ensure hashtag appears in description
 
 with open("tags.txt", "w", encoding="utf-8") as f:
-    f.write(tags if tags else "#AI, #Coding, #Gemini, #Shorts, #Developers")
+    f.write(", ".join(hashtags))
 
 print(f"✅ script.txt, title.txt, description.txt, tags.txt generated for topic: {topic}")

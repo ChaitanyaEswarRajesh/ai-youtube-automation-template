@@ -37,19 +37,19 @@ jobs:
           echo "🔹 Generating script for topic: $topic"
           python generate_with_gemini.py "$topic"
 
-      - name: Download image from Pixabay
+      - name: Download image from Pixabay (professional woman)
         env:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: |
           mkdir -p output
-          topic=$(cat topics.txt)
-          query=$(echo "$topic" | tr ' ' '+')
-          curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
+          query="professional+woman+business+portrait"
+          curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=5" > image_results.json
           IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
           if [ "$IMAGE_URL" = "null" ] || [ -z "$IMAGE_URL" ]; then
-            echo "❌ No image found on Pixabay for query: $query"
+            echo "❌ No image found on Pixabay for: $query"
             exit 1
           fi
+          echo "🖼️ Downloading image from: $IMAGE_URL"
           wget "$IMAGE_URL" -O output/image_0.jpg
 
       - name: Clean script for TTS
@@ -87,6 +87,13 @@ jobs:
           cp output/talking_avatar.mp4 output/video_full_0.mp4
           cp output/talking_avatar.mp4 output/video_short_0.mp4
 
+      - name: Create Shorts video (vertical 720x1280)
+        run: |
+          ffmpeg -loop 1 -i output/image_0.jpg -i output/audio_0.wav \
+            -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2" \
+            -c:v libx264 -pix_fmt yuv420p -shortest \
+            -y output/video_short_0.mp4
+
       - name: Generate subtitles
         run: |
           topic=$(cat topics.txt)
@@ -99,15 +106,18 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           topic=$(cat topics.txt)
-          echo "$topic" > title.txt
-          echo "Learn about $topic from a developer’s perspective using AI." > description.txt
-          echo "#AI #Gemini #Developers #Coding #Shorts" > tags.txt
+          title=$(cat title.txt)
+          desc=$(cat description.txt)
+          tags=$(cat tags.txt)
+
+          echo "$desc #shorts" > description.txt
+          echo "$tags" | sed 's/,/ /g' > tags.txt
 
           echo "Uploading full video..."
-          python upload_to_youtube.py full 0
+          python upload_to_youtube.py full 0 || echo "❌ Failed full upload."
 
           echo "Uploading short video..."
-          python upload_to_youtube.py short 0
+          python upload_to_youtube.py short 0 || echo "❌ Failed short upload."
 
       - name: Clean topics.txt
         run: |
