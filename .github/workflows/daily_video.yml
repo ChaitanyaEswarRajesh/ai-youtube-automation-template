@@ -24,12 +24,7 @@ jobs:
           sudo apt install -y ffmpeg jq wget
           pip install TTS requests flask
 
-      - name: Generate AI Video Topics (Gemini)
-        run: python auto_generate_topics.py
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-      - name: Generate Video(s) and Upload to YouTube
+            - name: Generate Video(s) and Upload to YouTube
         env:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -42,43 +37,55 @@ jobs:
           while IFS= read -r topic || [ -n "$topic" ]; do
             echo "🔹 Processing topic: $topic"
 
-            # Generate script from Gemini
             python generate_with_gemini.py "$topic"
 
-            # Generate TTS voice
             tts --text "$(cat script.txt)" \
                 --model_name tts_models/en/ljspeech/tacotron2-DDC \
                 --out_path output/audio_$i.wav
 
-            # Fetch Pixabay image
             query=$(echo "$topic" | tr ' ' '+')
             curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
             IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
             wget "$IMAGE_URL" -O output/image_$i.jpg
 
-            # Generate subtitles
             echo "1\n00:00:00,000 --> 00:00:10,000\n$topic" > output/subtitles_$i.srt
 
-            # Create video with subtitles
+            # FULL video (horizontal)
             ffmpeg -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
-              -vf "subtitles=output/subtitles_$i.srt" \
-              -c:v libx264 -tune stillimage -pix_fmt yuv420p \
-              -shortest -y output/video_$i.mp4
+              -vf "scale=1280:720,subtitles=output/subtitles_$i.srt" \
+              -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
+              -y output/video_full_$i.mp4
 
-            # Create metadata
+            # SHORT video (vertical)
+            ffmpeg -loop 1 -i output/image_$i.jpg -i output/audio_$i.wav \
+              -vf "scale=720:1280,subtitles=output/subtitles_$i.srt" \
+              -c:v libx264 -tune stillimage -pix_fmt yuv420p -shortest \
+              -y output/video_short_$i.mp4
+
             echo "$topic" > title.txt
             echo "Learn about $topic from a developer's perspective using AI." > description.txt
             echo "AI,Gemini,developer,YouTube automation,coding" > tags.txt
 
-            # Upload to YouTube (simplified form using refresh token)
-            echo "⏫ Uploading to YouTube..."
+            # Upload FULL
+            echo "⏫ Uploading full video..."
             curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
               -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
               -F "snippet.title=$(cat title.txt)" \
               -F "snippet.description=$(cat description.txt)" \
               -F "snippet.tags=$(cat tags.txt)" \
               -F "status.privacyStatus=public" \
-              -F "video=@output/video_$i.mp4"
+              -F "video=@output/video_full_$i.mp4"
+
+            # Upload SHORT
+            echo "⏫ Uploading short video..."
+            curl -X POST "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status" \
+              -H "Authorization: Bearer $YT_REFRESH_TOKEN" \
+              -F "snippet.title=$(cat title.txt) #shorts" \
+              -F "snippet.description=$(cat description.txt)\\n#shorts" \
+              -F "snippet.tags=$(cat tags.txt),shorts" \
+              -F "status.privacyStatus=public" \
+              -F "video=@output/video_short_$i.mp4"
 
             i=$((i+1))
           done < topics.txt
+
