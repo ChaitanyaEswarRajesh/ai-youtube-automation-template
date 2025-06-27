@@ -108,16 +108,15 @@ jobs:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
-          topic=$(cat topics.txt)
-          echo "$topic" > title.txt
-          echo "Learn about $topic from a developer’s perspective using AI.\n$(cat tags.txt)" > description.txt
-          echo "#AI #Gemini #Developers #Coding #Shorts" >> tags.txt
+          title=$(cat title.txt)
+          description=$(cat description.txt)
+          tags=$(cat tags.txt)
 
           echo "Uploading full video..."
-          python upload_to_youtube.py full 0 || echo "⚠️ Full video upload failed"
+          python upload_to_youtube.py full 0 "$title" "$description" "$tags" || echo "⚠️ Full video upload failed"
 
           echo "Uploading short video..."
-          python upload_to_youtube.py short 0 || echo "⚠️ Shorts upload failed"
+          python upload_to_youtube.py short 0 "$title" "$description" "$tags" || echo "⚠️ Shorts upload failed"
 
       - name: Clean topics.txt
         run: |
