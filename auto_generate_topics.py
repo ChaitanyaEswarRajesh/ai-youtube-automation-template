@@ -1,13 +1,15 @@
 
 import os
 import google.generativeai as genai
+import time
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 prompt = (
-    "Generate 10 YouTube video topics for software developers interested in AI. "
-    "Topics should be practical, technical, and appealing to developers."
+    "Generate 10 diverse YouTube video topics for software developers interested in AI. "
+    "Topics should be practical, technical, and appealing to developers. Use variety.\n"
+    f"Randomize: {time.time()}"  # Ensures varied output
 )
 
 response = model.generate_content(prompt)
