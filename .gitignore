@@ -1,10 +1,4 @@
-# Ignore Python virtual environment
-yvai/
 *.pyc
 __pycache__/
+output/
 .env
-
-# Ignore editor/OS files
-*.DS_Store
-*.swp
-*.swo

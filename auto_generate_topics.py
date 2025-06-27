@@ -1,29 +1,19 @@
+
 import os
 import google.generativeai as genai
 
-# Load the API key from environment variable
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-# Use the Gemini 1.5 Flash model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Define your prompt
 prompt = (
-    "Generate a list of 5 YouTube video topics related to how developers can use AI tools like Gemini, "
-    "GitHub Copilot, or LLMs. Make the topics short, professional, and interesting."
+    "Generate 10 YouTube video topics for software developers interested in AI. "
+    "Topics should be practical, technical, and appealing to developers."
 )
 
-# Generate content
-try:
-    response = model.generate_content(prompt)
-    text = response.text
-    topics = [line.strip('-• ').strip() for line in text.split('\n') if line.strip()]
-
-    # Write topics to file
-    with open("topics.txt", "w") as f:
-        f.write("\n".join(topics))
-
-    print("✅ Successfully generated topics.txt using Gemini 1.5 Flash")
-except Exception as e:
-    print("❌ Gemini SDK error:", e)
-    exit(1)
+response = model.generate_content(prompt)
+topics = response.text.strip().split("\n")
+with open("topics_master.txt", "a", encoding="utf-8") as f:
+    for t in topics:
+        if t.strip():
+            f.write(t.strip().lstrip("-• ") + "\n")
+print("✅ New topics appended to topics_master.txt")
