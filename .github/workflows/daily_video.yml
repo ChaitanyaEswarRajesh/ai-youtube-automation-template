@@ -41,10 +41,15 @@ jobs:
         env:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: |
+          mkdir -p output
           topic=$(cat topics.txt)
           query=$(echo "$topic" | tr ' ' '+')
           curl -s "https://pixabay.com/api/?key=$PIXABAY_API_KEY&q=$query&image_type=photo&per_page=3" > image_results.json
           IMAGE_URL=$(jq -r '.hits[0].largeImageURL' image_results.json)
+          if [ "$IMAGE_URL" = "null" ] || [ -z "$IMAGE_URL" ]; then
+            echo "❌ No image found on Pixabay for query: $query"
+            exit 1
+          fi
           wget "$IMAGE_URL" -O output/image_0.jpg
 
       - name: Clean script for TTS
