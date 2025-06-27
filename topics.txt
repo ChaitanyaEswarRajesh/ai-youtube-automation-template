@@ -1,1 +1,2 @@
-How AI helps with code reviews
+Using AI for faster debugging
+AI-assisted code refactoring
