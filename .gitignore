@@ -1,6 +1,42 @@
-*.pyc
-__pycache__/
-output/
+# Local-only and sensitive files
 .env
-get_youtube_refresh_token.py
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Local dev tools
 preview_app.py
+get_youtube_refresh_token.py
+
+# IDE/editor configs
+.vscode/
+*.log
+
+# Virtual environments (remove if present)
+venv/
+.yvai/
+*.egg-info/
+# Local-only and sensitive files
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Local dev tools
+preview_app.py
+get_youtube_refresh_token.py
+
+# IDE/editor configs
+.vscode/
+*.log
+
+# Virtual environments (remove if present)
+venv/
+.yvai/
+*.egg-info/
